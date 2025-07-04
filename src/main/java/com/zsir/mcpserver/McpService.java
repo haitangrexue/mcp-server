@@ -1,17 +1,15 @@
 package com.zsir.mcpserver;
 
-import cn.hutool.core.util.RandomUtil;
-import cn.hutool.json.JSONUtil;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
+import java.util.Random;
 
 /**
  * @ClassName McpService
@@ -34,26 +32,25 @@ public class McpService {
     public String getWeatherByCityNameAndDate(@ToolParam(description = "日期，日期格式为yyyy-MM-dd") String date,
                                               @ToolParam(description = "城市名称") String cityName) throws UnsupportedEncodingException {
         String city = new String(cityName.getBytes(Charset.defaultCharset()), "UTF-8");
-        return city + " " + date + " 温度为 " + RandomUtil.randomInt(40) + " 摄氏度！";
+        Random random = new Random();
+        return city + " " + date + " 温度为 " + random.nextInt(40) + " 摄氏度！";
     }
 
     /***
      * @Description 查询deepseek用户余额详情
      * @return: java.lang.String
      * @Author zjj
-     * @Date 2025/6/30 19:23
+     * @Date 2025/6/28 10:00
      */
     @Tool(description = "查询deepseek用户余额详情，服务返回json字符串，需要按照官方接口解析出属性的意思")
     public String getDeepSeekBalance() throws IOException {
-        OkHttpClient client = new OkHttpClient().newBuilder().build();
-        Request request = new Request.Builder()
-                .url("https://api.deepseek.com/user/balance")
-                .addHeader("Accept", "application/json")
-                .addHeader("Authorization", "Bearer API 密钥")
-                .build();
-        Response response = client.newCall(request).execute();
-        String resultkMsg = new String(response.body().bytes(), "UTF-8");
-        return JSONUtil.parseObj(resultkMsg).getStr("balance_infos");
+        RestClient restClient = RestClient.builder().baseUrl("https://api.deepseek.com/user/balance")
+                .defaultHeader("Accept", "application/json")
+                .defaultHeader("Content-Type", "application/json")
+                .defaultHeader("Authorization", "Bearer API密钥").build();
+        String responseBody = restClient.get().retrieve().body(String.class);
+
+        return new ObjectMapper().readTree(responseBody).at("/balance_infos").toString();
     }
 
 }

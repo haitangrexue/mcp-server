@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Configuration;
  * @ClassName AppConfig
  * @description:
  * @author: zjj
- * @create: 2025-06-28 10:24
+ * @create: 2025/6/28 10:00
  **/
 @Configuration
 public class AppConfig {

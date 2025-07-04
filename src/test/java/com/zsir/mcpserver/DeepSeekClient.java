@@ -1,6 +1,5 @@
 package com.zsir.mcpserver;
 
-import cn.hutool.core.convert.Convert;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -9,17 +8,17 @@ import io.modelcontextprotocol.client.McpSyncClient;
 import io.modelcontextprotocol.client.transport.HttpClientSseClientTransport;
 import io.modelcontextprotocol.spec.McpSchema;
 import lombok.extern.slf4j.Slf4j;
-import okhttp3.*;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.springframework.web.client.RestClient;
 
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * @ClassName DeepSeekClient（模拟AI客户端）
+ * @ClassName DeepSeekClient
  * @description:
  * @author: zjj
  * @create: 2025-06-28 10:00
@@ -31,6 +30,11 @@ public class DeepSeekClient {
 
     private static List<Map<String, Object>> tools;
 
+    /***
+     * @Description    初始化MCP-CLIENT
+     * @Author zjj
+     * @Date 2025-06-28 10:00
+     */
     @BeforeAll
     public static void init() throws JsonProcessingException {
         //以sse模式为例，解析出mcp-tools列表
@@ -79,9 +83,6 @@ public class DeepSeekClient {
      * @Date 2025/06/28 10:00
      */
     public List<Map<String, Object>> getMcpToolCallFromDeepSeek(String tools, String userInput) throws IOException {
-        OkHttpClient client = new OkHttpClient();
-        MediaType mediaType = MediaType.parse("application/json");
-
         // 构造 DeepSeek 请求（声明 McpService 能力）
         String requestBody = """
                 {
@@ -91,35 +92,35 @@ public class DeepSeekClient {
                 }
                 """.formatted(userInput, tools);
 
-        Request request = new Request.Builder().url("https://api.deepseek.com/v1/chat/completions").post(RequestBody.create(mediaType, requestBody))
-                .addHeader("Authorization", "Bearer API 密钥").build();
+        RestClient restClient = RestClient.builder().baseUrl("https://api.deepseek.com/v1/chat/completions")
+                .defaultHeader("Accept", "application/json")
+                .defaultHeader("Content-Type", "application/json")
+                .defaultHeader("Authorization", "Bearer API密钥").build();
+        String responseBody = restClient.post().body(requestBody).retrieve().body(String.class);
 
         log.info("②[mcp-client]将用户指令及注册的mcp能力列表发送给 AI 模型处理...\r\n" + requestBody);
 
         // 发送请求并解析响应
-        try (Response response = client.newCall(request).execute()) {
-            ObjectMapper mapper = new ObjectMapper();
-            JsonNode root = mapper.readTree(response.body().string());
-            JsonNode toolCalls = root.at("/choices/0/message/tool_calls");
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode root = mapper.readTree(responseBody);
+        JsonNode toolCalls = root.at("/choices/0/message/tool_calls");
 
-            if (toolCalls.size() > 0) {
-                String toolCallStr = Convert.toStr(toolCalls);
-                return (List<Map<String, Object>>) mapper.readValue(toolCallStr, List.class)
-                        .parallelStream().map(entity -> {
-                            LinkedHashMap<String, Object> model = (LinkedHashMap) entity;
-                            LinkedHashMap function = LinkedHashMap.class.cast(model.get("function"));
-                            model.putAll(function);
-                            model.remove("id");
-                            model.remove("type");
-                            model.remove("function");
-                            return model;
-                        }).sorted(Comparator.comparing(obj -> {
-                            LinkedHashMap<String, Object> map = (LinkedHashMap) obj;
-                            return Convert.toInt(map.get("index"));
-                        })).collect(Collectors.toList());
-            }
-            return null;
+        if (toolCalls.size() > 0) {
+            return (List<Map<String, Object>>) mapper.readValue(toolCalls.toString(), List.class)
+                    .parallelStream().map(entity -> {
+                        LinkedHashMap<String, Object> model = (LinkedHashMap) entity;
+                        LinkedHashMap function = LinkedHashMap.class.cast(model.get("function"));
+                        model.putAll(function);
+                        model.remove("id");
+                        model.remove("type");
+                        model.remove("function");
+                        return model;
+                    }).sorted(Comparator.comparing(obj -> {
+                        LinkedHashMap<String, Object> map = (LinkedHashMap) obj;
+                        return (Integer) map.get("index");
+                    })).collect(Collectors.toList());
         }
+        return null;
     }
 
     /***
@@ -135,8 +136,8 @@ public class DeepSeekClient {
         for (Map<String, Object> stepMap : execPlanList) {
             ObjectMapper mapper = new ObjectMapper();
             StringBuilder builder = new StringBuilder();
-            String function = Convert.toStr(stepMap.get("name"));
-            Map arguments = mapper.readValue(Convert.toStr(stepMap.get("arguments")), Map.class);
+            String function = String.valueOf(stepMap.get("name"));
+            Map arguments = mapper.readValue(String.valueOf(stepMap.get("arguments")), Map.class);
             //arguments多步骤处理判断，如果当前步骤包含step，需要重置值
             McpSchema.CallToolResult tool = mcpClient.callTool(new McpSchema.CallToolRequest(function, arguments));
             if (!tool.isError()) {
@@ -162,9 +163,6 @@ public class DeepSeekClient {
     public String convertRawToNaturalLanguage(String rawData) throws IOException {
         log.info("⑤[mcp-client]将mcp-server执行结果 [{}] 再次发送AI 模型转换为自然语言", rawData);
 
-        OkHttpClient client = new OkHttpClient();
-        MediaType mediaType = MediaType.parse("application/json");
-
         // 构造二次转换请求
         String requestBody = """
                 {
@@ -176,16 +174,22 @@ public class DeepSeekClient {
                 }
                 """.formatted(rawData);
 
-        Request request = new Request.Builder().url("https://api.deepseek.com/v1/chat/completions").post(RequestBody.create(mediaType, requestBody))
-                .addHeader("Authorization", "Bearer API 密钥").build();
+        RestClient restClient = RestClient.builder().baseUrl("https://api.deepseek.com/v1/chat/completions")
+                .defaultHeader("Accept", "application/json")
+                .defaultHeader("Content-Type", "application/json")
+                .defaultHeader("Authorization", "Bearer API密钥").build();
+        String responseBody = restClient.post().body(requestBody).retrieve().body(String.class);
 
-        try (Response response = client.newCall(request).execute()) {
-            ObjectMapper mapper = new ObjectMapper();
-            JsonNode root = mapper.readTree(response.body().string());
-            return root.at("/choices/0/message/content").asText();
-        }
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode root = mapper.readTree(responseBody);
+        return root.at("/choices/0/message/content").asText();
     }
 
+    /***
+     * @Description    关闭MCP-CLIENT
+     * @Author zjj
+     * @Date 2025-06-28 10:00
+     */
     @AfterAll
     public static void destory() {
         mcpClient.closeGracefully();

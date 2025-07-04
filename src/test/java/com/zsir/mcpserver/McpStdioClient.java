@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Map;
 
 /**
- * @ClassName client
+ * @ClassName McpStdioClient
  * @description:
  * @author: zjj
  * @create: 2025-06-28 10:00
@@ -28,7 +28,7 @@ public class McpStdioClient {
         //初始化客户端连接
         mcpClient.initialize();
 
-        //列出可用能力，可用于构造发送模型服务mcp信息
+        //列出可用能力
         //McpSchema.ListToolsResult toolsList = mcpClient.listTools();
 
         //调用mcp 能力

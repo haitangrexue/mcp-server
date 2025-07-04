@@ -13,7 +13,7 @@ import java.util.Map;
  * @ClassName McpSseClient
  * @description:
  * @author: zjj
- * @create: 2025-06-29 19:51
+ * @create: 2025-06-28 10:00
  **/
 public class McpSseClient {
 
@@ -24,7 +24,7 @@ public class McpSseClient {
         //初始化客户端连接
         mcpClient.initialize();
 
-        //列出可用能力，可用于构造发送模型mcp信息
+        //列出可用能力
         //McpSchema.ListToolsResult toolsList = mcpClient.listTools();
 
         //调用mcp 能力

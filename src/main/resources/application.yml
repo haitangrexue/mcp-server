@@ -11,6 +11,8 @@ logging:
     console: "[%d{yyyy-MM-dd-HH:mm:ss}] [%thread] [%-5level] %logger - %msg%n"
     file: "[%d{yyyy-MM-dd-HH:mm:ss}] [%thread] [%-5level] %logger - %msg%n"
   file:
-    max-size: 500MB
-    max-history: 5
     name: /aichat/${spring.application.name}/${spring.application.name}.log
+  logback:
+    rollingpolicy:
+      max-file-size: 500MB
+      max-history: 5
