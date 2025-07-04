@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: mcp-server
+  main:
+    banner-mode: off
+
+logging:
+  level:
+    root: INFO
+  pattern:
+    console: "[%d{yyyy-MM-dd-HH:mm:ss}] [%thread] [%-5level] %logger - %msg%n"
+    file: "[%d{yyyy-MM-dd-HH:mm:ss}] [%thread] [%-5level] %logger - %msg%n"
+  file:
+    max-size: 500MB
+    max-history: 5
+    name: /aichat/${spring.application.name}/${spring.application.name}.log
