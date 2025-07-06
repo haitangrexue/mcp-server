@@ -31,7 +31,7 @@ public class DeepSeekClient {
     private static List<Map<String, Object>> tools;
 
     /***
-     * @Description    初始化MCP-CLIENT
+     * @Description 初始化MCP-CLIENT
      * @Author zjj
      * @Date 2025-06-28 10:00
      */
@@ -53,7 +53,7 @@ public class DeepSeekClient {
                     return tool;
                 }).collect(Collectors.toList());
         ObjectMapper mapper = new ObjectMapper();
-        log.info("[能力列表初始化]解析能力列表进行注册\r\n" + mapper.writerWithDefaultPrettyPrinter().writeValueAsString(tools));
+        log.info("[mcp-server]注册到mcp-host并解析能力列表\r\n" + mapper.writerWithDefaultPrettyPrinter().writeValueAsString(tools));
     }
 
     @Test
@@ -61,18 +61,18 @@ public class DeepSeekClient {
         ObjectMapper mapper = new ObjectMapper();
         String command = "deepseek账户余额是多少？";
 
-        log.info("①[user]发送指令 [{}] 给 mcp-Client", command);
+        log.info("①[user]发送指令 [{}] 给 mcp-host", command);
 
         List<Map<String, Object>> execPlanList = getMcpToolCallFromDeepSeek(mapper.writeValueAsString(tools), command);
 
-        log.info("③[DeepSeek]经过语义分析，规划执行步骤，返回给mcp-client\r\n" + mapper.writerWithDefaultPrettyPrinter().writeValueAsString(execPlanList));
+        log.info("③[DeepSeek]结合上下文信息经过语义分析，整合工具规划执行步骤，返回给mcp-host\r\n" + mapper.writerWithDefaultPrettyPrinter().writeValueAsString(execPlanList));
 
         String mcpResult = callMcpService(execPlanList);
 
         String result = convertRawToNaturalLanguage(mcpResult);
-        log.info("⑥[DeepSeek]经过语义分析结果 [{}] 返回给mcp-client", result);
+        log.info("⑥[DeepSeek]经过语义分析结果 [{}] 返回给mcp-host", result);
 
-        log.info("⑦[mcp-client]将AI 模型分析后的结果返回给用户");
+        log.info("⑦[mcp-host]将DeepSeek分析后的结果返回给用户");
     }
 
     /***
@@ -98,7 +98,7 @@ public class DeepSeekClient {
                 .defaultHeader("Authorization", "Bearer API密钥").build();
         String responseBody = restClient.post().body(requestBody).retrieve().body(String.class);
 
-        log.info("②[mcp-client]将用户指令及注册的mcp能力列表发送给 AI 模型处理...\r\n" + requestBody);
+        log.info("②[mcp-host]将用户指令及已注册的mcp能力列表发送给DeepSeek进行处理...\r\n" + requestBody);
 
         // 发送请求并解析响应
         ObjectMapper mapper = new ObjectMapper();
@@ -132,7 +132,7 @@ public class DeepSeekClient {
      */
     public String callMcpService(List<Map<String, Object>> execPlanList) throws IOException {
         String result = "";
-        log.info("④[mcp-client]执行AI 模型返回的执行规划，按照index顺序调用能力执行...");
+        log.info("④[mcp-host]通过mcp-client调用mcp-server按DeepSeek返回的步骤进行顺序执行...");
         for (Map<String, Object> stepMap : execPlanList) {
             ObjectMapper mapper = new ObjectMapper();
             StringBuilder builder = new StringBuilder();
@@ -149,7 +149,6 @@ public class DeepSeekClient {
             }
             result = builder.toString();
         }
-        //logmcp-client执行AI 模型返回的执行规划；按照index顺序调用能力执行
         return result;
     }
 
@@ -161,7 +160,7 @@ public class DeepSeekClient {
      * @Date 2025/06/28 10:00
      */
     public String convertRawToNaturalLanguage(String rawData) throws IOException {
-        log.info("⑤[mcp-client]将mcp-server执行结果 [{}] 再次发送AI 模型转换为自然语言", rawData);
+        log.info("⑤[mcp-host]将mcp-server返回结果 [{}] 再次发送DeepSeek转义为自然语言", rawData);
 
         // 构造二次转换请求
         String requestBody = """
@@ -186,7 +185,7 @@ public class DeepSeekClient {
     }
 
     /***
-     * @Description    关闭MCP-CLIENT
+     * @Description 关闭MCP-CLIENT
      * @Author zjj
      * @Date 2025-06-28 10:00
      */
